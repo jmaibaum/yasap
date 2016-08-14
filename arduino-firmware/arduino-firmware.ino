@@ -119,8 +119,8 @@ void sid_filter_mode(byte mode)
 void sid_adsr(byte att, byte dec, byte sus, byte rel, byte vox = 0)
 {
   byte vos = vox * 7;
-  sid_write_byte(vos + 5, ((att & 0x0f) << 4) | (dec &0x0f));
-  sid_write_byte(vos + 6, ((sus & 0x0f) << 4) | (rel &0x0f));
+  sid_write_byte(vos + 5, ((att & 0x0f) << 4) | (dec & 0x0f));
+  sid_write_byte(vos + 6, ((sus & 0x0f) << 4) | (rel & 0x0f));
 }
 
 void sid_note(unsigned freq, byte vox = 0)
