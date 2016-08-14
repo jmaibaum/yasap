@@ -71,6 +71,11 @@ void sid_write_byte(byte addr, byte data)
 #define SQU 0x4
 #define NOI 0x8
 
+#define LPF 0x1
+#define BPF 0x2
+#define HPF 0x4
+#define NCF (LPF | HPF)
+
 struct sid_settings {
   byte fmode;
   byte volume;
@@ -98,15 +103,17 @@ void sid_volume(byte vol)
   sid_write_byte(24, (sid.fmode << 4) | sid.volume);
 }
 
-void sid_filter(int cutoff, byte reso, char mode = -1)
+void sid_filter(unsigned cutoff, byte reso)
 {
-  if (mode >= 0) {
-    sid.fmode = (mode & 0x7);
-  }
-  sid_write_byte(24, (sid.fmode << 4) | sid.volume);
   sid_write_byte(21, cutoff & 0x7);
-  sid_write_byte(22, (cutoff & 0x3fc) >> 3);
-  sid_write_byte(23, ((reso & 0xf) << 4) | (osc[3].filter << 1)| (osc[2].filter << 1)| (osc[1].filter << 1));
+  sid_write_byte(22, (cutoff & 0x7f8) >> 3);
+  sid_write_byte(23, ((reso & 0xf) << 4) | (osc[2].filter << 2) | (osc[1].filter << 1) | osc[0].filter);
+}
+
+void sid_filter_mode(byte mode)
+{
+  sid.fmode = (mode & 0x7);
+  sid_write_byte(24, (sid.fmode << 4) | sid.volume);
 }
 
 void sid_adsr(byte att, byte dec, byte sus, byte rel, byte vox = 0)
@@ -116,7 +123,7 @@ void sid_adsr(byte att, byte dec, byte sus, byte rel, byte vox = 0)
   sid_write_byte(vos + 6, ((sus & 0x0f) << 4) | (rel &0x0f));
 }
 
-void sid_note(unsigned int freq, byte vox = 0)
+void sid_note(unsigned freq, byte vox = 0)
 {
   byte vos = vox * 7;
   sid_write_byte(vos, (freq & 0xff));
@@ -153,21 +160,42 @@ void setup()
   // SID sound settings
   sid_stop_all();
   sid_volume(15);
-  //sid_filter(1000, 0, 1);
   sid_adsr(2, 4, 10, 4);
   delay(1000);
 }
 
 void loop()
 {
+  static bool res = true;
+  static byte mode = LPF;
+  sid_filter_mode(mode);
+  sid_filter(0x3ff, (res ? 15 : 0));
   sid_note(2000);
   delay(500);
   sid_stop(0);
+  sid_filter(0x1ff, (res ? 15 : 0));
   sid_note(1000);
   delay(500);
   sid_stop(0);
+  sid_filter(0xff, (res ? 15 : 0));
   sid_note(3000);
   delay(500);
   sid_stop(0);
   delay(500);
+
+  res = !res;
+  switch (mode) {
+    case LPF:
+      mode = BPF;
+      break;
+    case BPF:
+      mode = HPF;
+      break;
+    case HPF:
+      mode = NCF;
+      break;
+    case NCF:
+      mode = LPF;
+      break;
+  }
 }
